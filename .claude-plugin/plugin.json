@@ -1,0 +1,7 @@
+{
+  "name": "cli-notify",
+  "displayName": "CLI-Notify Plugin",
+  "description": "Real-time session mirroring and remote control via Android app. Includes built-in Desktop Agent server for Cloud Relay communication.",
+  "version": "1.0.0",
+  "author": { "name": "cyanrain" }
+}
