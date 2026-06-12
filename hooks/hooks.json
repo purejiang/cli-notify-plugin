@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.mjs",
+            "command": "D:/ProgramData/Miniconda3/python.exe ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.py",
             "timeout": 15000
           }
         ]
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.mjs",
+            "command": "D:/ProgramData/Miniconda3/python.exe ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.py",
             "timeout": 10000
           }
         ]
@@ -31,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.mjs",
+            "command": "D:/ProgramData/Miniconda3/python.exe ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.py",
             "timeout": 10000
           }
         ]
@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.mjs",
+            "command": "D:/ProgramData/Miniconda3/python.exe ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.py",
             "timeout": 10000
           }
         ]
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.mjs",
+            "command": "D:/ProgramData/Miniconda3/python.exe ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.py",
             "timeout": 10000
           }
         ]
@@ -67,7 +67,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.mjs",
+            "command": "D:/ProgramData/Miniconda3/python.exe ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.py",
             "timeout": 15000
           }
         ]
@@ -79,7 +79,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.mjs",
+            "command": "D:/ProgramData/Miniconda3/python.exe ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.py",
             "timeout": 10000
           }
         ]
@@ -91,7 +91,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.mjs",
+            "command": "D:/ProgramData/Miniconda3/python.exe ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.py",
             "timeout": 10000
           }
         ]
