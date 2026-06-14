@@ -45,7 +45,8 @@ CORRELATION_STORE_PATH = os.path.join(SCRIPT_DIR, "correlation-store.json")
 
 _config: Optional[Dict[str, str]] = None
 
-def load_config() -> Dict[str, str]:
+def load_config() -> Optional[Dict[str, str]]:
+    """Load relay config. Returns None if not configured (caller should exit silently)."""
     global _config
     if _config is not None:
         return _config
@@ -53,12 +54,13 @@ def load_config() -> Dict[str, str]:
         with open(CONFIG_PATH, "r", encoding="utf-8") as f:
             cfg = json.load(f)
     except Exception:
-        print("[relay-forward] Missing or invalid relay-config.json", file=sys.stderr)
-        sys.exit(1)
+        # No config file — plugin not set up yet, exit silently
+        return None
 
     token = cfg.get("token", "")
     if not token or token == "PLACEHOLDER":
-        print("[relay-forward] relay-config.json not configured — run /cli-notify:setup first", file=sys.stderr)
+        # Config not filled in — plugin not set up yet, exit silently
+        return None
 
     relay_url = cfg.get("relayUrl", "http://localhost:8765").rstrip("/")
     _config = {"relay_url": relay_url, "token": token}
@@ -434,6 +436,9 @@ def process_hook(body: Dict[str, Any]) -> None:
         return
 
     config = load_config()
+    if config is None:
+        # Not configured yet — exit silently (no-op until /cli-notify:setup)
+        return
     relay_url = config["relay_url"]
     token = config["token"]
 

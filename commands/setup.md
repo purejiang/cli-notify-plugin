@@ -25,17 +25,23 @@ argument-hint: <pairing-key-or-json>
    - JWT 写入 `token` 字段。
    - 格式：`{ "relayUrl": "http://host:port", "token": "jwt-string-here" }`
 
-4. **健康检查**（可选但推荐）：
+4. **激活 hooks.json**：
+   - 检查 `hooks/hooks.json` 是否存在：
+     - 如果存在 → 已激活，跳过此步骤。
+     - 如果不存在 → 将 `hooks/hooks.json.disabled` 复制为 `hooks/hooks.json`，使所有 8 个 hook 生效。
+   - 复制命令：读取 `hooks/hooks.json.disabled`，写入 `hooks/hooks.json`。
+
+5. **健康检查**（可选但推荐）：
    - `GET {relayUrl}/health` — 确认中继在线。
    - 如果可达，报告中继状态；否则发出警告但不要阻止设置。
 
-5. **E2EE 状态**（可选）：
+6. **E2EE 状态**（可选）：
    - 尝试 `GET {relayUrl}/pubkey?token={jwt}` 以检查手机公钥是否已注册。
    - 如果有公钥：E2EE 加密已就绪。
    - 如果没有：告知用户手机 App 连接后将自动协商 E2EE 密钥。
 
-6. **完成消息**：
-   - 成功时："配置完成！所有 hook 已配置为通过 relay-forward.mjs 转发事件到中继。手机 App 扫码即可连接。"
+7. **完成消息**：
+   - 成功时："配置完成！hooks.json 已激活，所有 8 个 hook 已就绪，通过 relay-forward.py 转发事件到中继。手机 App 扫码即可连接。"
    - 提及："如需端到端加密，请确保手机 App 已连接（自动交换公钥）。"
    - 显示中继 URL 和会话状态。
 
