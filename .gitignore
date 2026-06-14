@@ -12,3 +12,4 @@ hooks/hooks.json
 # IDE
 .vscode/
 .idea/
+scripts/relay-config.json
