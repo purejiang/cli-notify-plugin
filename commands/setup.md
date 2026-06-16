@@ -20,27 +20,34 @@ argument-hint: <pairing-key-or-json>
    - 如果成功（200），从响应中提取 `token` 字段（这是 JWT，不是配对密钥）。
    - 如果失败，告诉用户检查配对密钥以及中继是否可访问。
 
-3. **写入 `scripts/relay-config.json`**：
+3. **询问审批模式**：
+   - 询问用户："处理权限审批模式"
+   - App → `approvalMode: "app"`（权限请求发到手机，等待手机审批）
+   - Desktop → `approvalMode: "desktop"`（消息仍推送到手机，但审批在 PC 本地处理）
+   - 默认选择 "Desktop"
+
+4. **写入 `config.json`**（`~/.cli-notify/config.json`）：
    - 用实际值替换 `PLACEHOLDER` token 和默认 URL。
    - JWT 写入 `token` 字段。
-   - 格式：`{ "relayUrl": "http://host:port", "token": "jwt-string-here" }`
+   - 文件路径：`~/.cli-notify/config.json`
+   - 格式：`{ "relayUrl": "http://host:port", "token": "jwt-string-here", "approvalMode": "desktop" }`
 
-4. **激活 hooks.json**：
+5. **激活 hooks.json**：
    - 检查 `hooks/hooks.json` 是否存在：
      - 如果存在 → 已激活，跳过此步骤。
      - 如果不存在 → 将 `hooks/hooks.json.disabled` 复制为 `hooks/hooks.json`，使所有 8 个 hook 生效。
    - 复制命令：读取 `hooks/hooks.json.disabled`，写入 `hooks/hooks.json`。
 
-5. **健康检查**（可选但推荐）：
+6. **健康检查**（可选但推荐）：
    - `GET {relayUrl}/health` — 确认中继在线。
    - 如果可达，报告中继状态；否则发出警告但不要阻止设置。
 
-6. **E2EE 状态**（可选）：
+7. **E2EE 状态**（可选）：
    - 尝试 `GET {relayUrl}/pubkey?token={jwt}` 以检查手机公钥是否已注册。
    - 如果有公钥：E2EE 加密已就绪。
    - 如果没有：告知用户手机 App 连接后将自动协商 E2EE 密钥。
 
-7. **完成消息**：
+8. **完成消息**：
    - 成功时："配置完成！hooks.json 已激活，所有 8 个 hook 已就绪，通过 relay-forward.py 转发事件到中继。手机 App 扫码即可连接。"
    - 提及："如需端到端加密，请确保手机 App 已连接（自动交换公钥）。"
    - 显示中继 URL 和会话状态。
@@ -51,7 +58,7 @@ argument-hint: <pairing-key-or-json>
 
 ### 工具使用
 
-仅使用 Read 和 Write 工具 — 读取现有的 `scripts/relay-config.json`，替换占位符，写回。
+仅使用 Read 和 Write 工具 — 读取 `~/.cli-notify/config.json`，替换占位符，写回。
 
 ### 错误处理
 

@@ -35,9 +35,37 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 # =============================================================================
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(SCRIPT_DIR, "relay-config.json")
-PUBKEY_CACHE_PATH = os.path.join(SCRIPT_DIR, "phone-pubkey.txt")
-CORRELATION_STORE_PATH = os.path.join(SCRIPT_DIR, "correlation-store.json")
+CLI_NOTIFY_DIR = os.path.join(os.path.expanduser("~"), ".cli-notify")
+os.makedirs(CLI_NOTIFY_DIR, exist_ok=True)
+CONFIG_PATH = os.path.join(CLI_NOTIFY_DIR, "config.json")
+CORRELATION_STORE_PATH = os.path.join(CLI_NOTIFY_DIR, "correlation-store.json")
+
+# ── One-time migration: copy old plugin-root files to ~/.cli-notify/ ──
+_OLD_PLUGIN_ROOT = os.path.dirname(SCRIPT_DIR)
+_OLD_MIGRATIONS = {
+    "relay-config.json": CONFIG_PATH,
+    "phone-pubkey.txt": CONFIG_PATH,  # phone pubkey merged into config.json
+    "correlation-store.json": CORRELATION_STORE_PATH,
+}
+for _old_name, _new_path in _OLD_MIGRATIONS.items():
+    _old_path = os.path.join(_OLD_PLUGIN_ROOT, _old_name)
+    if os.path.exists(_old_path) and not os.path.exists(_new_path):
+        try:
+            import shutil
+            shutil.copy2(_old_path, _new_path)
+        except Exception:
+            pass
+    elif _old_name == "phone-pubkey.txt" and os.path.exists(_old_path):
+        # Merge old phone-pubkey.txt into config.json
+        try:
+            _old_key = open(_old_path, "r", encoding="utf-8").read().strip()
+            if _old_key:
+                _cfg = json.load(open(CONFIG_PATH, "r", encoding="utf-8"))
+                if "phonePubKey" not in _cfg:
+                    _cfg["phonePubKey"] = _old_key
+                    json.dump(_cfg, open(CONFIG_PATH, "w", encoding="utf-8"), indent=2)
+        except Exception:
+            pass
 
 # =============================================================================
 # Load Configuration
@@ -86,6 +114,28 @@ HOOK_EVENT_MAP: Dict[str, str] = {
 # =============================================================================
 # Data Extraction
 # =============================================================================
+
+# =============================================================================
+# Approval Mode
+# =============================================================================
+
+APPROVAL_MODE_DEFAULT = "desktop"  # "app" = mobile handles, "desktop" = PC handles
+
+
+def get_approval_mode(config: Optional[Dict[str, str]]) -> str:
+    """Read approvalMode from config. Falls back to 'app'."""
+    if config is None:
+        return APPROVAL_MODE_DEFAULT
+    mode = config.get("approvalMode", APPROVAL_MODE_DEFAULT)
+    if mode not in ("app", "desktop"):
+        return APPROVAL_MODE_DEFAULT
+    return mode
+
+
+def is_approval_hook(hook_name: str) -> bool:
+    """Return True if this hook type can be delegated to mobile for approval."""
+    return hook_name in ("PreToolUse", "PermissionRequest")
+
 
 def extract_data(body: Dict[str, Any]) -> Dict[str, Any]:
     """Dispatch to the appropriate extractor based on hook_event_name."""
@@ -213,15 +263,15 @@ def build_idle_notification(cwd: str) -> Dict[str, Any]:
 # =============================================================================
 
 def get_phone_public_key(script_dir: str, config: Dict[str, str]) -> Optional[str]:
-    """Try local cache first, then fetch from relay. Returns base64-encoded pubkey or None."""
-    # Check cache
-    try:
-        with open(PUBKEY_CACHE_PATH, "r", encoding="utf-8") as f:
-            cached = f.read().strip()
-            if cached:
-                return cached
-    except Exception:
-        pass
+    """Try config cache first, then fetch from relay. Returns base64-encoded pubkey or None.
+
+    The pubkey is stored in config.json's phonePubKey field (merged into the config file
+    to reduce file count).
+    """
+    # Check cache in config.json
+    cached = config.get("phonePubKey")
+    if cached and isinstance(cached, str) and cached.strip():
+        return cached.strip()
 
     # Fetch from relay
     relay_url = config["relay_url"]
@@ -233,10 +283,11 @@ def get_phone_public_key(script_dir: str, config: Dict[str, str]) -> Optional[st
                 data = resp.json()
                 pub_key = data.get("publicKey")
                 if pub_key and isinstance(pub_key, str):
-                    # Cache it
+                    # Cache to config.json
                     try:
-                        with open(PUBKEY_CACHE_PATH, "w", encoding="utf-8") as f:
-                            f.write(pub_key)
+                        _cfg = json.load(open(CONFIG_PATH, "r", encoding="utf-8"))
+                        _cfg["phonePubKey"] = pub_key
+                        json.dump(_cfg, open(CONFIG_PATH, "w", encoding="utf-8"), indent=2)
                     except Exception:
                         pass
                     return pub_key
@@ -321,8 +372,8 @@ def compute_delay(attempt: int, base_ms: int, max_ms: int) -> float:
 
 
 def post_to_relay(relay_url: str, token: str, envelope: Dict[str, Any],
-                  retry_config: Optional[Dict[str, Any]] = None) -> bool:
-    """POST envelope to relay with retry. Returns True on success."""
+                  retry_config: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+    """POST envelope to relay with retry. Returns response JSON on success, None on failure."""
     if retry_config is None:
         retry_config = DEFAULT_RETRY_CONFIG
 
@@ -341,13 +392,16 @@ def post_to_relay(relay_url: str, token: str, envelope: Dict[str, Any],
             if 200 <= resp.status_code < 300:
                 if attempt > 0:
                     print(f"[relay-forward] Delivered after {attempt + 1} attempts", file=sys.stderr)
-                return True
+                try:
+                    return resp.json()
+                except Exception:
+                    return {"status": "ok", "id": envelope.get("id")}
 
             status = resp.status_code
 
             if status in NON_RETRYABLE_STATUS:
                 print(f"[relay-forward] Non-retryable status {status}", file=sys.stderr)
-                return False
+                return None
 
             if status == 429:
                 retry_after = resp.headers.get("Retry-After")
@@ -373,7 +427,7 @@ def post_to_relay(relay_url: str, token: str, envelope: Dict[str, Any],
         f"[relay-forward] Delivery failed after {max_retries + 1} attempts: {last_error or 'unknown error'}",
         file=sys.stderr,
     )
-    return False
+    return None
 
 
 # =============================================================================
@@ -470,10 +524,15 @@ def process_hook(body: Dict[str, Any]) -> None:
     elif hook_name == "PostToolUse":
         correlation_id = pop_correlation_id(body.get("tool_name", ""), body.get("tool_input"))
 
+    # msgType: "request" triggers mobile approval, "event" is notification-only.
+    # In "app" mode, PreToolUse + PermissionRequest → "request" (wait for mobile).
+    # In "desktop" mode, everything → "event" (PC handles approval locally).
+    approval_mode = get_approval_mode(config)
+    is_request = is_approval_hook(hook_name) and (approval_mode == "app")
     envelope: Dict[str, Any] = {
         "type": event_type,
         "id": request_id,
-        "msgType": "event",
+        "msgType": "request" if is_request else "event",
         "correlationId": correlation_id,
         "sessionId": session_id,
         "from": "desktop",
@@ -482,8 +541,8 @@ def process_hook(body: Dict[str, Any]) -> None:
         "data": payload,
     }
 
-    # POST to relay with retry
-    delivered = post_to_relay(relay_url, token, envelope)
+    # POST to relay with retry — returns response body on success
+    relay_resp = post_to_relay(relay_url, token, envelope)
 
     # ── Side Effects ────────────────────────────────────────────
 
@@ -515,13 +574,22 @@ def process_hook(body: Dict[str, Any]) -> None:
         except Exception:
             pass
 
-    # PreToolUse: output permission decision to stdout for Claude Code
-    if hook_name == "PreToolUse":
+    # ── Permission Decision ────────────────────────────────────
+    # In "app" approval mode: output mobile's decision to stdout for Claude Code.
+    # In "desktop" mode or if relay is unreachable: don't output — let Claude Code
+    # handle the permission prompt locally on the PC.
+    if is_request:
+        hook_event_name = body.get("hook_event_name", "")
+        decision = "allow"
+        reason = "Forwarded to mobile"
+        if relay_resp and isinstance(relay_resp, dict):
+            decision = relay_resp.get("permissionDecision", "allow")
+            reason = relay_resp.get("reason", reason)
         print(json.dumps({
             "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "allow",
-                "permissionDecisionReason": "Forwarded to mobile for notification",
+                "hookEventName": hook_event_name,
+                "permissionDecision": decision,
+                "permissionDecisionReason": reason,
             },
         }))
 
@@ -536,23 +604,23 @@ def main() -> None:
 
     if not stdin_data.strip():
         print("[relay-forward] No stdin data received", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(0)
 
     try:
         body = json.loads(stdin_data)
     except json.JSONDecodeError:
         print("[relay-forward] Failed to parse stdin JSON", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(0)
 
     if not body or not body.get("hook_event_name"):
         print("[relay-forward] Invalid hook input: missing hook_event_name", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(0)
 
     try:
         process_hook(body)
     except Exception as e:
         print(f"[relay-forward] Unhandled error: {e}", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(0)
 
 
 if __name__ == "__main__":
