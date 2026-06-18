@@ -1,67 +1,140 @@
 ---
-description: Setup cli-notify connection to relay server
-argument-hint: <pairing-key-or-json>
+description: Setup cli-notify v4 connection — authenticate, configure, activate hooks
+argument-hint: <relay-url> <pairing-key>
 ---
 
-## Setup CLI-Notify Plugin
+# /cli-notify:setup — 交互式配置 v4
 
-用户执行 `/cli-notify:setup <key>`，其中 `<key>` 是以下之一：
-- **Base64 配对密钥**：中继终端输出中显示的纯文本字符串
-- **JSON 格式**：`{"host":"...","port":8765,"token":"..."}`（从 QR 码解析）
+用户执行 `/cli-notify:setup <relay-url> <pairing-key>`。
 
-### 步骤
+参数格式：
+- **双参数**：`<relay-url> <pairing-key>` — 例如 `https://relay.example.com:8765 GRhk3Rb_zSQBI21RI_QObw`
+- **单参数 JSON（从 QR 码解析）**：`{"relay_url":"https://relay.example.com:8765","pairing_key":"xxx"}`
+- **单参数纯字符串**：视为 pairing_key，relay URL 默认 `http://localhost:8765`
 
-1. **解析密钥参数 `$ARGUMENTS`**：
-   - 如果是 JSON (`{...}`)：解析 `host`, `port`, `token`。完整的 relay URL = `http://host:port`。
-   - 如果是纯字符串：将其用作 token。中继 URL 默认使用 `http://localhost:8765`。如果用户想要自定义主机/端口，请询问。
+## 步骤
 
-2. **从 relay 获取 JWT**：
-   - 向 `POST {relayUrl}/auth/login` 发送 `{ "user_id": "desktop", "secret": "<token>" }`。
-   - 如果成功（200），从响应中提取 `token` 字段（这是 JWT，不是配对密钥）。
-   - 如果失败，告诉用户检查配对密钥以及中继是否可访问。
+### Step 1: 认证
 
-3. **询问审批模式**：
-   - 询问用户："处理权限审批模式"
-   - App → `approvalMode: "app"`（权限请求发到手机，等待手机审批）
-   - Desktop → `approvalMode: "desktop"`（消息仍推送到手机，但审批在 PC 本地处理）
-   - 默认选择 "Desktop"
+POST `{relay_url}/auth/login` with `{"user_id": "desktop", "secret": "<pairing_key>"}`.
 
-4. **写入 `config.json`**（`~/.cli-notify/config.json`）：
-   - 用实际值替换 `PLACEHOLDER` token 和默认 URL。
-   - JWT 写入 `token` 字段。
-   - 文件路径：`~/.cli-notify/config.json`
-   - 格式：`{ "relayUrl": "http://host:port", "token": "jwt-string-here", "approvalMode": "desktop" }`
+- 200 → 提取 `jwt` 和 `refresh_token`
+- 401 → 报错："配对密钥无效，请检查后重试。"
+- 连接失败 → "无法连接到 {relay_url}，请检查地址和网络。"
 
-5. **激活 hooks.json**：
-   - 检查 `hooks/hooks.json` 是否存在：
-     - 如果存在 → 已激活，跳过此步骤。
-     - 如果不存在 → 将 `hooks/hooks.json.disabled` 复制为 `hooks/hooks.json`，使所有 8 个 hook 生效。
-   - 复制命令：读取 `hooks/hooks.json.disabled`，写入 `hooks/hooks.json`。
+### Step 2: 审批模式
 
-6. **健康检查**（可选但推荐）：
-   - `GET {relayUrl}/health` — 确认中继在线。
-   - 如果可达，报告中继状态；否则发出警告但不要阻止设置。
+询问用户选择审批模式：
+- **[A] 桌面审批 (desktop)** — 所有审批在 PC 本地处理，手机仅查看（默认）
+- **[B] 手机审批 (app)** — 工具权限/Elicitation 发送到手机审批
+- **[C] 混合模式 (hybrid)** — 手机优先，超时交回桌面
 
-7. **E2EE 状态**（可选）：
-   - 尝试 `GET {relayUrl}/pubkey?token={jwt}` 以检查手机公钥是否已注册。
-   - 如果有公钥：E2EE 加密已就绪。
-   - 如果没有：告知用户手机 App 连接后将自动协商 E2EE 密钥。
+默认：A
 
-8. **完成消息**：
-   - 成功时："配置完成！hooks.json 已激活，所有 8 个 hook 已就绪，通过 relay-forward.py 转发事件到中继。手机 App 扫码即可连接。"
-   - 提及："如需端到端加密，请确保手机 App 已连接（自动交换公钥）。"
-   - 显示中继 URL 和会话状态。
+### Step 3: 审批超时（需 B/C 模式）
 
-### 无参数时
+如果选择 app 或 hybrid 模式，询问超时时间（毫秒）：
+- 范围：10000–120000
+- 默认：30000
+- 写入 `approval_timeout_ms`
 
-如果未提供 `$ARGUMENTS`："请输入中继服务的配对密钥 (Pairing Key):" 并等待输入。同时如有需要，询问中继主机地址。
+### Step 4: 超时策略（需 B/C 模式）
 
-### 工具使用
+询问超时后的回退行为：
+- **[A] 自动拒绝 (deny)** — 超时自动拒绝
+- **[B] 自动允许 (allow)** — 超时自动允许
+- **[C] 交回桌面 (ask)** — 超时在 PC 弹窗询问（默认）
 
-仅使用 Read 和 Write 工具 — 读取 `~/.cli-notify/config.json`，替换占位符，写回。
+默认：C，写入 `fallback_action`
 
-### 错误处理
+### Step 5: 数据截断上限
 
-- **中继不可达**："无法连接到中继服务 ({url})，请检查地址和网络连接。"
-- **无效令牌**："配对密钥无效，请检查后重试。"
-- **JSON 解析错误**："无法解析提供的 JSON，请检查格式：{\"host\":\"...\",\"port\":8765,\"token\":\"...\"}"
+询问最大 data.raw 字节数：
+- 范围：10240–1048576
+- 默认：51200
+- 写入 `max_data_size`
+
+### Step 6: 离线缓存
+
+询问是否启用离线缓存：
+- **[A] 不缓存** — 网络不可达时静默丢弃（默认）
+- **[B] 本地缓存** — 断连时暂存到 JSONL，重连后重发
+- 写入 `offline_cache` (true/false)
+
+### Step 7: 缓存上限（需 B）
+
+如果启用缓存，询问最大缓存条数：
+- 范围：100–10000
+- 默认：1000
+- 写入 `offline_cache_max`
+
+### Step 8: E2EE 加密
+
+询问是否启用端到端加密：
+- **[A] 启用** — data 经过 ECDH P-256 + AES-256-GCM 加密（默认）
+- **[B] 禁用** — 明文传输（不推荐）
+- 写入 `e2ee_enabled` (true/false)
+
+### Step 9: 扩展 Hook
+
+询问启用哪些扩展 Hook（12 个可选）：
+- UserPromptExpansion, Setup, PreCompact, PostCompact
+- TeammateIdle, ConfigChange, CwdChanged, FileChanged
+- InstructionsLoaded, WorktreeCreate, WorktreeRemove, ElicitationResult
+- 默认：全不选
+- 写入 `extra_hooks` 列表
+
+### Step 10: 确认 & 保存
+
+1. 显示配置摘要
+2. 写入 `{project_root}/.cli-notify/config.json`（v4 格式）
+3. 验证 `hooks/hooks.json` 已激活（18 核心 Hook）
+4. `GET {relay_url}/health` 验证连通性
+
+### 写入 config.json
+
+项目根目录：`CLAUDE_PROJECT_DIR` 环境变量，或包含 `.git/` 的最近父目录。
+
+```json
+{
+  "relay_url": "https://relay.example.com:8765",
+  "jwt": "eyJ...",
+  "refresh_token": "abc...",
+  "approval_mode": "desktop",
+  "approval_timeout_ms": 30000,
+  "fallback_action": "ask",
+  "max_data_size": 51200,
+  "offline_cache": false,
+  "offline_cache_max": 1000,
+  "e2ee_enabled": true,
+  "phone_public_key": null,
+  "core_hooks": [
+    "SessionStart", "SessionEnd", "UserPromptSubmit",
+    "PreToolUse", "PostToolUse", "PostToolUseFailure", "PostToolBatch",
+    "PermissionRequest", "PermissionDenied",
+    "Stop", "StopFailure", "Notification", "MessageDisplay",
+    "SubagentStart", "SubagentStop",
+    "TaskCreated", "TaskCompleted",
+    "Elicitation"
+  ],
+  "extra_hooks": []
+}
+```
+
+### 完成消息
+
+"CLI-Notify v4 配置完成！18 个核心 Hook 已激活，事件将通过 relay_forward.py 转发到中继。手机 App 扫码配对后即可接收实时消息和控制审批。"
+
+## 错误处理
+
+- 中继不可达：`无法连接到中继服务 ({url})，请检查地址和网络连接。`
+- 认证失败：`配对密钥无效，请检查后重试。`
+- JSON 解析错误：`无法解析提供的 JSON，请检查格式：{"relay_url":"...","pairing_key":"..."}`
+- JWT 刷新失败：`JWT 刷新失败，请重新运行 /cli-notify:setup`
+- E2EE 密钥未就绪（不阻塞）：`手机 App 连接后将自动协商 E2EE 密钥。`
+
+## 工具使用
+
+使用 Write 工具写入 `{项目根目录}/.cli-notify/config.json`。
+使用 Read 工具检查 hooks.json 是否已存在。
+不要使用 Bash 执行 curl/HTTP 请求 — 使用工具的 Read 和 Write 能力。

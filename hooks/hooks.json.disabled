@@ -1,101 +1,35 @@
 {
-  "description": "CLI-Notify hooks — forward Claude Code lifecycle events to Cloud Relay for real-time mobile mirroring.",
+  "description": "CLI-Notify v4 hooks template — 18 core hooks (active) + 12 extended hooks (optional, uncomment by moving to hooks.json). All hooks reference relay_forward.py.",
   "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.py",
-            "timeout": 15000
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.py",
-            "timeout": 10000
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.py",
-            "timeout": 10000
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.py",
-            "timeout": 10000
-          }
-        ]
-      }
-    ],
-    "PermissionRequest": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.py",
-            "timeout": 10000
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.py",
-            "timeout": 15000
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.py",
-            "timeout": 10000
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "permission_prompt|idle_prompt",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay-forward.py",
-            "timeout": 10000
-          }
-        ]
-      }
-    ]
+    "SessionStart": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 15000 }] }],
+    "SessionEnd": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "UserPromptSubmit": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "PreToolUse": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 30000 }] }],
+    "PostToolUse": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "PostToolUseFailure": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "PostToolBatch": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "PermissionRequest": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 30000 }] }],
+    "PermissionDenied": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "Stop": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 15000 }] }],
+    "StopFailure": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "Notification": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "MessageDisplay": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "SubagentStart": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "SubagentStop": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 15000 }] }],
+    "TaskCreated": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "TaskCompleted": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "Elicitation": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 30000 }] }],
+    "UserPromptExpansion": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "Setup": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "PreCompact": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "PostCompact": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "TeammateIdle": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "ConfigChange": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "CwdChanged": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "FileChanged": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "InstructionsLoaded": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "WorktreeCreate": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "WorktreeRemove": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }],
+    "ElicitationResult": [{ "matcher": "", "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/relay_forward.py", "timeout": 10000 }] }]
   }
 }

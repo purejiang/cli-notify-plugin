@@ -1,7 +1,7 @@
 {
   "name": "cli-notify",
-  "displayName": "CLI-Notify Plugin",
-  "description": "Real-time Claude Code session mirroring and remote control via Android app. Forwards hook events to Cloud Relay with optional E2EE encryption.",
-  "version": "2.0.0",
+  "displayName": "CLI-Notify Plugin v4",
+  "description": "Real-time Claude Code session mirroring and remote control via Android app. Forwards 18 core hook events to Cloud Relay with optional E2EE encryption and mobile approval support.",
+  "version": "4.0.0",
   "author": { "name": "cyanrain" }
 }
